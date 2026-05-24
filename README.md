@@ -1,8 +1,8 @@
-# SMILE1 S1–GoPro Synchronization
+# SMILE1 S1-GoPro Synchronization and Segmentation
 
 This repository contains scripts developed for the SMILE1 visuoacoustic sign language recognition programming project.
 
-The current pipeline focuses on synchronizing Kinect/S1 recordings with GoPro/S5 recordings, transferring gloss annotations from the Kinect timeline to the GoPro timeline, and generating subtitle files for visual inspection.
+The pipeline focuses on synchronizing Kinect/S1 recordings with GoPro/S5 recordings, transferring gloss annotations from the Kinect timeline to the GoPro timeline, generating subtitle files for visual inspection, and running automatic sign segmentation on the GoPro S5 recordings.
 
 ## Pipeline overview
 
@@ -15,6 +15,10 @@ The current workflow includes:
 - transferring `.ilex` gloss annotations from the Kinect timeline to the GoPro timeline
 - checking alignment consistency
 - generating `.srt` subtitle files for visual inspection together with the GoPro videos
+- converting merged S5 GoPro videos to clean 720p/25fps videos
+- generating MediaPipe `.pose` files with `sign-language-processing/pose`
+- running Zifan's segmentation model from `sign-language-processing/segmentation`
+- producing ELAN `.eaf` files with predicted `SIGN` and `SENTENCE` tiers
 
 ## Scripts
 
@@ -41,6 +45,49 @@ The current workflow includes:
 
 - `scripts/make_srt_from_alignment.py`  
   Generates `.srt` subtitle files from the aligned gloss annotations for visual inspection together with the GoPro videos.
+
+- `scripts/run_smile1_s5_segmentation_array.sbatch`  
+  Slurm array job for processing all SMILE1 merged S5 GoPro videos through the segmentation pipeline.
+
+## Segmentation inputs and outputs
+
+The segmentation step processes the merged S5 GoPro recordings listed in:
+
+- `manifests/smile1_merged_s5_manifest.tsv`
+
+For each recording, the final segmentation pipeline is:
+
+```text
+original merged_S5.mp4
+-> clean 720p/25fps mp4
+-> MediaPipe .pose
+-> segmentation .eaf
+```
+
+The clean-video conversion step was added because direct `video_to_pose` processing of the original GoPro files caused PyAV/simple-video-utils video-reading errors on the cluster. After converting to clean 720p/25fps MP4 files, all generated `.pose` files matched the corresponding clean-video frame counts exactly.
+
+Small summary outputs are stored in:
+
+- `results/qc_summary.tsv`
+- `results/seg_counts.tsv`
+
+The full generated outputs are stored on the cluster at:
+
+```text
+/home/xitang/smile1_pose_test/outputs
+```
+
+with subdirectories:
+
+```text
+outputs/videos   clean 720p/25fps videos
+outputs/poses    generated .pose files
+outputs/eaf      segmentation .eaf files
+outputs/qc       per-sample QC files
+outputs/logs     Slurm logs
+```
+
+Large files such as `.mp4` and `.pose` files are not tracked in this repository.
 
 ## Notes
 
